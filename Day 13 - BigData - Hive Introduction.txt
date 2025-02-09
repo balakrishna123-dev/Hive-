@@ -1,0 +1,390 @@
+HIVE    = Engine (MR)
+===============================
+-> It was developed by Facebook.
+-> Hive query language(HQL) -> it is similar to SQL 
+
+Background:
+=============
+
+2006 -> 10GB a day
+2007 -> 1TB a day  (Facebook)
+2009 -> MR to Hive 
+
+
+Hive Components :
+======================
+Shell : It allows interactive query(similar to MYSQL)
+driver : It handles session and execute opera tions and optimize.
+compiler : Parse(check syntax), Plan(logical plan and physical plan).
+Metastore : It is used to store metadata information about hive.
+			Eg : schema, Location in HDFS, serde (serealization[string -> java object] and 	deseralization[java object -> string])
+
+			
+How data is stored :
+----------------------------					
+RDBMS : Tables data (In blocks)
+HIVE : Tables data(In HDFS as files(csv,parquet,orc, etc...))
+
+
+Data Model :
+==========================
+-> Table : It has typed columns(int,float,string,list, etc....)
+	
+	Eg : creditcart transaction.
+		cc_id(Int),cc_holder(string),cc_amount(Int), country(String)
+		-----------------------------------------------------------
+		1001234556789012,Honey, 50000, India
+		1001234556789015,siva, 50000, US
+
+Data storage : HDFS.
+Data storage Location : /user/hive/warehouse/db_name/creditcart/files.orc
+					/ravi_db/honey/part_r_0000.parquet
+											  
+-> Partition :  Table contains multiple partitions. and folder is created for each partitions.
+	
+Eg :
+	Data storage : HDFS.
+	Data storage Location :/user/hive/warehouse/db_name/creditcart/country=india/files.csv
+																  /country=US/files.csv
+																  /country=china/files.csv
+																  
+	regular table (10,000 records)
+	------------------------------
+	select * from creditcart where country='India'; (data scan - 10,000 records)
+	
+	partition table(10,000 records)
+	------------------------------
+	select * from creditcart where country='India'; (data scan - 10 Records)
+	
+
+1. When we choose partition.
+---------------------------
+	When the column is having more repeating values, Then we use choose that column for partitioning.
+	
+
+
+-> Bucket : Each partition contains multiple buckets. It stores as files.
+
+Eg :
+	Data storage : HDFS.
+	Data storage Location :/user/hive/warehouse/db_name/creditcart/country=india/file1.csv
+														
+	1gb : 
+	
+	table with out bucketing :
+	--------------------------
+		insert into target_table select * from input_table.
+		
+		Eg : /user/hive/warehouse/db_name/creditcart/country=india/file1.csv (100 files)
+					1file size = 10 MB
+					
+					HDFS block size : 128 MB - 10MB = 118MB (Waste). 
+					
+					These files need 100 blocks.
+					
+						
+	Table with bucketing (4 buckets) :
+	----------------------
+		insert into target_table select * from input_table.			
+		
+		Eg : /user/hive/warehouse/db_name/creditcart/country=india/file1.csv (4 Buckets)
+	
+					1file size = 1024MB /4 = 256MB
+					
+					HDFS block size : 128MB - 128MB = 0 Waste.
+					
+					These files need only 8 blocks.
+1. When we choose bucketing					
+-------------------------
+ When the column is having less repeating values, Then we choose bucketing, 
+ When we want to avoid small files problem, We choose bucekting.
+
+ 
+
+Tables :
+===================================================
+1. Internal/ Managed table  :
+----------------------------- 
+When we create internal table , table is created in warehouse location.
+	Eg : /user/hive/warehouse/db_name/creditcart/
+	
+When we drop the table, Table structure and data is also deleted in hdfs.
+
+
+2. External table   :
+---------------------
+When we create external table, We need to specify table location.
+	Eg : /user/cloudera/shivakishore/creditcart/files.csv
+	
+When we drop the table, Only table structure is deleted. Data still Alive.
+
+
+
+Operators :
+=======================
+
+Relational operators :
+-----------------------
+	=,!=,<,>,<=,>=, in null,is not null, like, etc
+
+
+Arthematic Operators :
+---------------------
+	+,-,*,/,%,&,|,^,~
+
+
+Logical Operators :
+--------------------
+	AND/&&
+	OR/||
+	NOT A / ~A 
+	
+	
+	A   B   &&   ||
+	----------------
+	0   0   0    0
+	0   1   0    1
+	1   0   0    1
+	1   1   1    1
+
+Complex Operators :
+---------------------
+	Array[n] :
+	Map[Key] :
+	Struct[S.x] :
+	
+	
+	
+Built In Functions :
+========================================================================
+Input : 2.1 
+
+round() = 2
+
+ceil()  = 3
+
+floor() = 2
+
+
+
+Aggregate Functions :
+==================================================================
+sum()  
+max()
+min()
+avg()
+count(*)
+count(col_name)
+
+Joins :
+==================================================================
+Inner join
+left outer join 
+right outer join
+full outer join 
+cross join 
+left anti join
+right anti join
+
+
+Clause :
+=================================================
+select   -> it is used to filter the columns from table.
+from     -> it is used to read data from table.
+where    -> It is used to filter the rows from table.
+group by -> It is used to group the data.
+order by -> It is used to order the columns. it can be ascending or descending 
+having   -> It is also used to filter the row but we can apply this condition on aggregate functions.
+
+
+
+Tables :
+======================================
+
+RDBMS : MySql 
+-----------
+create table db_name.table_name(id int,name string,age int);
+
+
+Hive : Two types of tables 
+---------------------------
+
+Data base:
+	table1 : 
+		partition1
+			bucket1
+			bucket2
+			bucket3
+		partition2
+			bucket1
+			bucket2
+			bucket3
+		partitionn
+			bucket1
+			bucket2
+			bucket3
+	table2:
+		partition1
+		partition2
+		partitionn
+	table n
+		partition1
+		partition2
+		partitionn
+
+Internal/Managed table :
+------------------------
+When we create table, table is created in warehouse location in HDFS.
+When we drop the table, Table and data is also deleted.
+
+eg : /user/hive/warehouse/db_name/table_name/files.csv
+
+
+
+External table :
+-----------------
+When we create external table, We must specify location. It can be any location in HDFS.
+When we drop the table, Table structure only deleted. Data still Alive in HDFS.
+
+
+DML Commands :
+--------------
+mysql : insert,update, delete 
+HIVE  : insert 
+
+
+
+Maltiple ways to insert data into hive table.
+----------------------------------------------
+1. Load file from LFS to Hive table 
+2. Load file from hdfs to hive table.
+3. Copy file from hdfs to hive location.
+4. Load data from input table to output table in hdfs.
+	1. Insert into 
+	2. Insert overwrite
+5. CTAS  : Create table target_table as select * from input_table
+
+
+
+Partitions :
+=============
+ Partitions are folders which are created under table folder in HDFS.It is way of dividing a table into relared parts based on the values of partition columns 
+	Such as : date, 
+			  country, 
+			  city, 
+			  department,
+			  year
+ 
+ HDFS Location : /user/hive/wareshouse/db_name/table_name/country=india/files.txt
+														 /country=china/files.txt
+														 /country=us/files.txt
+														 /country=aus/files.txt
+														 
+ 
+ 
+	Static partitions :
+	-------------------
+		When we create static partition, We must specify partition name when we insert the data into hive table.
+		We can load data into only one partitions. if we choose static way.
+		
+		insert into emp_part partition(country='india')
+		select id, name from emp_p;
+	
+	 
+	Dynamic partitions:
+	-------------------
+		When we create dynamic partitions, No need to specify partitions name, It will take from column values from source table.
+		If we want to use dynamic partitions, We need to use non strict mode and dynamic partitions = True
+	
+		set hive.exec.dynamic.partition=true
+		set hive.exec.dynamic.partition.mode=nonstrict
+		
+		insert into emp_part partition(country)
+		select id, name,country from emp_p;
+	
+	
+	
+Bucketing :
+============
+Buckets are files, Which are stored under table location or partition location.
+When we have small files problem, we choose buckets to control.
+we will control number of buckets while creating table. 
+It will create buckets by hashing techinique.
+
+No of bucket = no of files.
+
+Eg : 1GB into hive table (100 files(each file size = 10MB))
+
+Regular table : 128MB - 10MB = 118 MB waste in each block. = data is loaded into 100 blocks
+---------------
+bucket table  :  
+---------------
+8 buckets = 1024/8 = bucket size :128MB - 128MB = No waste.
+
+
+
+Table : With partitions + bucketing 
+====================================
+
+
+
+Window functions :
+====================
+row_number() : It will provide serial numbers.it must provide unique values.
+rank() : It will provide ranks. Numbers can be negleted.
+dense_rank() : Same as rank. but number is not negleted.
+
+
+lead()
+lag()
+
+
+
+Interview Questions 
+===========================================
+Diffrence between Internal table and external table ?
+Diffrence between 
+
+can you find nth highest salary from employee table;
+can you find 2nd highest salary from employee table;   
+can you find 5th highest salary from employee table;   
+
+can you find top3 highest salaries from employee table; 
+can you find top3 bottow salaries from employee table; 
+
+
+
+
+salary, marks :
+
+highest  : descending
+lowest  : ascending
+
+dense_rank() 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+					
+
+
+
+
+

@@ -1,0 +1,240 @@
+show databases;
+
+create database offline;
+
+How to create internal table:
+-------------------------------
+create table offline.c_card(id int,holder string,amount int)
+row format delimited
+fields terminated by '|'
+stored as textfile;
+
+select * from c_card;
+
+How to create external table 
+-----------------------------
+
+create external table c_card_ext(id int, holder string, amount int)
+row format delimited 
+fields terminated by ','
+stored as textfile
+location '/user/cloudera/sasi/c_card_ext';
+
+
+
+Alter 
+================================================
+alter table emp rename to employee; 
+
+alter table employee add columns(sal int);
+
+alter table employee replace columns(e_id int,e_name string);
+
+
+Drop Commands :
+===================
+drop table emp;
+
+
+
+Multiple ways to load the data into hive table 
+===============================================
+Load data from LFS to HIVE :
+----------------------------
+load data local inpath '/home/cloudera/sample.txt' into table c_card;
+
+
+Load data from HDFS to HIVE :
+-----------------------------
+load data inpath '/user/cloudera/sasi.txt' into table c_card;
+
+Copy file into hive table location
+----------------------------------
+hdfs dfs -cp /user/cloudera/test_hdfs.txt /user/cloudera/sasi/c_card_ext/
+
+
+insert into c_card_ext values(10,'suresh',500);
+
+insert into c_card_ext select * from c_card;
+
+insert overwrite table c_card_ext select * from c_card;
+
+create table c_card1 as select * from c_card;
+select * from c_card1;
+
+
+Hive Limitations:
+------------------
+Update command - Not work
+delete command - Not work 
+It is not suitable for live streaming. It is suitable for batch processing.
+
+
+Create diffrent file support Tables:
+===================================
+
+Textfile/csv :
+-----------
+create table offline.c_card(id int,holder string,amount int)
+row format delimited
+fields terminated by '|'
+stored as textfile;
+
+parquet :
+--------------
+create table c_card_parquet(id int, holder string, amount int)
+stored as parquet;
+
+insert into c_card_parquet select * from c_card;
+
+show create table c_card_parquet;
+
+sequence file :
+----------------
+create table c_card_sequence(id int, holder string, amount int)
+stored as sequencefile;
+
+show create table c_card_sequence;
+
+insert into c_card_sequence select * from c_card;
+
+select * from c_card_sequence;
+
+rcfile:
+---------
+create table c_card_rc(id int, holder string, amount int)
+stored as rcfile;
+
+show create table c_card_rc;
+
+avro file :
+------------
+create table c_card_avro(id int, holder string, amount int)
+stored as avro;
+
+show create table c_card_avro;
+
+orc file :
+---------
+create table c_card_orc(id int, holder string, amount int)
+stored as orc;
+
+show create table c_card_orc;
+
+
+
+Partitions :
+===============
+
+create partition table:
+------------------------
+create table emp_p(id int,name string)
+partitioned by(country string)
+row format delimited
+fields terminated by ','
+stored as textfile;
+
+file location: /user/hive/warehouse/db_name/table_name/partitions/file.txt
+
+Static partitions :
+-----------------
+insert into emp_p partition(country='US')
+select id,name from emp;
+
+Dynamic partitions :
+-------------------
+set hive.exec.dynamic.partition.mode=nonstrict
+set hive.exec.dynamic.partition=true
+
+insert into emp_p partition(country)
+select id,name from emp;
+
+Alter partitions :
+==================
+  Add partitions : 
+  ----------------
+	alter table emp_partb add partition(country='pak') location '/user/hive/warehouse/online.db/emp_partb/country=pak'
+
+  drop partitions :
+  -----------------
+	alter table emp_partb drop partition(country='inda');
+  rename partitions :
+  -------------------
+	alter table emp_partb partition(country='pak') rename to partition(country='pakistan')
+
+bucketing :
+============
+create table emp_b(id int, name string)
+clustered by (id) into 4 buckets
+stored by parquet;
+
+
+partition + bucketing
+========================
+create table emp_b(id int, name string)
+partitioned by (country string)
+clustered by (id) into 4 buckets
+stored by parquet;
+
+
+Window Functions:
+=====================
+
+select 
+   *
+   ,row_number() over(order by salary) as row_number_asc
+   ,row_number() over(order by salary desc) as row_number_desc
+   ,rank() over(order by salary ) as rank_asc
+   ,rank() over(order by salary desc) as rank_desc
+   ,dense_rank() over(order by salary ) as d_rank_asc
+   ,dense_rank() over(order by salary desc) as d_rank_desc
+   
+from emp_w;
+
+
+row_number() :
+---------------
+select * from 
+(
+  select *, row_number() over(order by salary desc) as d_rank from emp_w
+) tab
+where tab.d_rank <=3;
+
+rank() :
+-----------
+select * from 
+(
+  select *, rank() over(order by salary desc) as d_rank from emp_w
+) tab
+where tab.d_rank <=3;
+
+
+dense_rank():
+--------------
+select * from 
+(
+select *,dense_rank() over(partition by dept order by salary ) as d_rank
+from emp_w
+) tab
+where tab.d_rank <=3 
+;
+
+
+LEAD and LAG :
+-------------------
+
+select emp
+      ,salary
+      ,year
+      ,lag(salary) over(order by year) as lagg 
+      ,lead(salary) over(order by year) as lead
+
+from emp_ll
+
+
+
+
+
+
+
+
